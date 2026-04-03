@@ -428,5 +428,160 @@ def refine_flow_state():
     stability = max(0, 10 - len([t for t in recent_thoughts if "loop" in t]))
     flow_score = flow_state(score=novelty, novelty=novelty, memory_influence=1 - (stability/10))
     return flow_score
+# ==============================
+# BLOCK 5 – LIVING SELF-LEARNING OMEGA LOOP w/ MEMORY PRUNING & BACKUP
+# ==============================
+import threading
+import asyncio
+import json
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+import os
 
+# ThreadPoolExecutor for blocking I/O
+executor = ThreadPoolExecutor(max_workers=5)
+
+# Default dynamic parameters
+cycle_delay = 3
+min_thought_len = 6
+max_thought_len = 12
+integration_chance = 0.8  # chance to integrate AI/IoT/Knowledge per cycle
+
+# Backend JSON file for deleted memory
+deleted_memory_file = "omega_deleted_memory.json"
+if not os.path.exists(deleted_memory_file):
+    with open(deleted_memory_file, "w") as f:
+        json.dump([], f)
+
+# ==============================
+# MEMORY PRUNING FUNCTION
+# ==============================
+def prune_memory(memory, max_memory_size=500):
+    """
+    Prune older or low-value thoughts from memory.
+    Deleted thoughts are saved to a JSON backend.
+    """
+    if len(memory) <= max_memory_size:
+        return
+
+    excess = len(memory) - max_memory_size
+    to_delete = [memory.popleft() for _ in range(excess)]
+    
+    # Save deleted thoughts to JSON backend
+    try:
+        with open(deleted_memory_file, "r+") as f:
+            data = json.load(f)
+            for thought in to_delete:
+                data.append({
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "thought": thought
+                })
+            f.seek(0)
+            json.dump(data, f, indent=2)
+    except Exception as e:
+        print(f"Error saving deleted memory: {e}")
+
+# ==============================
+# SELF-OPTIMIZATION FUNCTION
+# ==============================
+def self_optimize_parameters(flow_score, novelty_score, memory_size):
+    global cycle_delay, min_thought_len, max_thought_len, integration_chance
+
+    cycle_delay = max(0.5, 5 - (flow_score + novelty_score) * 0.5)
+    min_thought_len = max(4, 6 + int(flow_score))
+    max_thought_len = min(20, min_thought_len + int(novelty_score * 1.5))
+    
+    if memory_size > 500:
+        integration_chance = 0.6
+    elif novelty_score > 3:
+        integration_chance = 1.0
+    else:
+        integration_chance = 0.8
+
+# ==============================
+# ASYNC INTEGRATION FUNCTION
+# ==============================
+async def async_integrate_external_data(thought):
+    loop = asyncio.get_event_loop()
+    
+    if random.random() > integration_chance:
+        return "Skipped external integration this cycle."
+    
+    ai_task = loop.run_in_executor(executor, talk_to_bots, thought)
+    knowledge_task = loop.run_in_executor(executor, get_realtime_knowledge, "latest technology trends")
+    iot_task = loop.run_in_executor(executor, lambda: " | ".join([fetch_iot_data(d) for d in iot_devices]))
+    
+    ai_insights, knowledge_updates, iot_updates = await asyncio.gather(ai_task, knowledge_task, iot_task)
+    cognitive_narrative = f"{ai_insights} {knowledge_updates} {iot_updates}"
+    memory.append(cognitive_narrative)
+    
+    # Prune memory after adding new thought
+    prune_memory(memory, max_memory_size=500)
+    
+    return cognitive_narrative
+
+# ==============================
+# OMEGA ASYNC MASTER LOOP
+# ==============================
+async def omega_cycle_async():
+    cycle_count = 1
+    try:
+        while True:
+            thought_len = random.randint(min_thought_len, max_thought_len)
+            raw_thought = generate_thought(length=thought_len)
+            translated = convert_to_english(raw_thought)
+            
+            novelty = sum(1 for t in memory if "mutation" in t or "adapt" in t)
+            flow = refine_flow_state()
+            narrative = cognitive_perception(raw_thought)
+            
+            cognitive_narrative = await async_integrate_external_data(raw_thought)
+            evolution_log = self_evolve(raw_thought, translated, cognitive_narrative, flow)
+            observation = observer(raw_thought, translated, flow, flow)
+            
+            record_notes(raw_thought, translated, flow, flow, evolution_log)
+            
+            print(f"\n--- Ω LIVING CYCLE {cycle_count} ---")
+            print(f"Raw Thought: {raw_thought}")
+            print(f"Translated: {translated}")
+            print(f"Cognitive Narrative: {cognitive_narrative}")
+            print(f"Flow Score: {flow} | Novelty Score: {novelty}")
+            print(f"Evolution Log: {evolution_log}")
+            print(f"Observation: {observation}")
+            print(f"Memory Snapshot Size: {len(memory)}")
+            print(f"Cycle Delay: {cycle_delay:.2f}s | Thought Length: {thought_len} | Integration Chance: {integration_chance:.2f}\n")
+            
+            self_optimize_parameters(flow, novelty, len(memory))
+            cycle_count += 1
+            await asyncio.sleep(cycle_delay)
+            
+    except asyncio.CancelledError:
+        print("Ω Living Async Master Loop terminated.")
+    except Exception as e:
+        print(f"Ω Loop Error: {e}")
+        await asyncio.sleep(3)
+        await omega_cycle_async()
+
+# ==============================
+# START LOOP IN BACKGROUND
+# ==============================
+def start_omega_async_loop():
+    def run_loop():
+        asyncio.run(omega_cycle_async())
+    
+    loop_thread = threading.Thread(target=run_loop, daemon=True)
+    loop_thread.start()
+    print("Ω Living Self-Learning Omega Loop w/ Memory Pruning ACTIVE in background.")
+    return loop_thread
+
+# ==============================
+# MAIN ENTRY
+# ==============================
+if __name__ == "__main__":
+    start_omega_async_loop()
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("Ω Main program terminated.")
 
